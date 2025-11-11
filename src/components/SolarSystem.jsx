@@ -410,19 +410,25 @@ export default function SolarSystem() {
 
     // Sun
 
-    const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+  // 1️⃣ Load texture
+  const textureLoader = new THREE.TextureLoader();
+  const sunTexture = textureLoader.load("src/models/the_sun/textures/moon_baseColor.jpeg"); // update path to your image
 
-    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFDB813 });
+// 2️⃣ Create a material using that texture
+  const sunMaterial = new THREE.MeshBasicMaterial({
+  map: sunTexture,       // use the texture
+  // optional tweaks:
+  // emissive: 0xFDB813, // adds glow color if using MeshStandardMaterial
+  // emissiveIntensity: 1
+  });
 
-    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  const sunGeometry = new THREE.SphereGeometry(5, 64, 64); // more segments = smoother
+  const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  scene.add(sun);
 
-    scene.add(sun);
-
-
-
-    const sunLight = new THREE.PointLight(0xffffff, 2, 500);
-
-    scene.add(sunLight);
+// 4️⃣ Add point light (if you want it to illuminate other planets)
+  const sunLight = new THREE.PointLight(0xffffff, 2, 500);
+  scene.add(sunLight);
 
 
 
