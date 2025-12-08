@@ -1,4 +1,4 @@
-import SolarSystem from './components/SolarSystem'
+import SolarSystem from "./SolarSystem";
 
 function App() {
   return <SolarSystem />
