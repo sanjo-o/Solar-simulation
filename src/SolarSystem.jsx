@@ -1,10 +1,12 @@
-import React, { useState, useRef, useMemo, Suspense, useEffect } from 'react';
+import React, { useState, useRef, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Html, Billboard, useTexture, Loader } from '@react-three/drei';
 import * as THREE from 'three';
-import { Play, Pause, RotateCcw, Calculator, X, MapPin, Thermometer, Weight, Activity, FileText, ChevronRight, LayoutGrid, Gauge } from 'lucide-react';
+// --- 1. IMPORT XR ---
+import { createXRStore, XR } from '@react-three/xr';
+import { Play, Pause, RotateCcw, Calculator, X, MapPin, Thermometer, Weight, Activity, FileText, ChevronRight, LayoutGrid, Gauge, Glasses } from 'lucide-react';
 
-// --- IMAGE IMPORTS ---
+// --- IMAGE IMPORTS (Keep your existing imports) ---
 import mercuryImg from './textures/mercury.jpg';
 import venusImg   from './textures/venus.jpg';
 import earthImg   from './textures/earth.jpg';
@@ -14,6 +16,20 @@ import saturnImg  from './textures/saturn.jpg';
 import uranusImg  from './textures/uranus.jpg';
 import neptuneImg from './textures/neptune.jpg';
 import sunImg     from './textures/sun.jpg';
+
+// --- 2. CREATE XR STORE ---
+// Change your store definition to this:
+const store = createXRStore({
+  depthSensing: false,
+  hand: {
+    visible: true,
+    model: false // Try setting this to false
+  },
+  controller: {
+    visible: true,
+    model: false // Try setting this to false
+  }
+});
 
 // --- DATA ---
 const SUN_DATA = {
@@ -39,8 +55,8 @@ const PLANET_DATA = [
 ];
 
 const TRANSLATIONS = {
-  en: { app_title: "Solar Simulator", sim_settings: "Simulation Target", years: "Years", months: "Months", days: "Days", start_sim: "Simulate", stop_sim: "Stop", reset: "Reset", dist_traveled: "Distance Traveled", velocity: "Avg Velocity", million_km: "million km", km_s: "km/s", lang: "EN", focus: "Focus", exit: "Exit", mission_report: "Mission Report", mission_complete: "Simulation Complete", report_desc: "Visualizing planetary travel distance for this period.", close: "Close", menu: "System Map", overview: "System Overview", speed: "Speed" },
-  mn: { app_title: "Нарны Систем", sim_settings: "Симуляцийн тохиргоо", years: "Жил", months: "Сар", days: "Өдөр", start_sim: "Эхлүүлэх", stop_sim: "Зогсоох", reset: "Шинэчлэх", dist_traveled: "Туулсан зам", velocity: "Дундаж хурд", million_km: "сая км", km_s: "км/с", lang: "МН", focus: "Төвлөрөх", exit: "Гарах", mission_report: "Үр дүнгийн тайлан", mission_complete: "Симуляци дууслаа", report_desc: "Энэ хугацаанд гаргуудын туулсан замыг харьцуулав.", close: "Хаах", menu: "Газрын зураг", overview: "Системийг харах", speed: "Хурд" }
+  en: { app_title: "Solar Simulator", sim_settings: "Simulation Target", years: "Years", months: "Months", days: "Days", start_sim: "Simulate", stop_sim: "Stop", reset: "Reset", dist_traveled: "Distance Traveled", velocity: "Avg Velocity", million_km: "million km", km_s: "km/s", lang: "EN", focus: "Focus", exit: "Exit", mission_report: "Mission Report", mission_complete: "Simulation Complete", report_desc: "Visualizing planetary travel distance for this period.", close: "Close", menu: "System Map", overview: "System Overview", speed: "Speed", enter_vr: "Enter VR" },
+  mn: { app_title: "Нарны Систем", sim_settings: "Симуляцийн тохиргоо", years: "Жил", months: "Сар", days: "Өдөр", start_sim: "Эхлүүлэх", stop_sim: "Зогсоох", reset: "Шинэчлэх", dist_traveled: "Туулсан зам", velocity: "Дундаж хурд", million_km: "сая км", km_s: "км/с", lang: "МН", focus: "Төвлөрөх", exit: "Гарах", mission_report: "Үр дүнгийн тайлан", mission_complete: "Симуляци дууслаа", report_desc: "Энэ хугацаанд гаргуудын туулсан замыг харьцуулав.", close: "Хаах", menu: "Газрын зураг", overview: "Системийг харах", speed: "Хурд", enter_vr: "VR-д орох" }
 };
 
 const AtmosphereShader = {
@@ -68,6 +84,10 @@ function CameraRig({ selectedPlanet, focusRef }) {
     }, [selectedPlanet]);
     
     useFrame((state, delta) => {
+        // --- 3. DISABLE RIG IN VR ---
+        // If we are in immersive VR, we let the headset control the camera
+        if (store.mode === 'immersive-vr') return;
+
         if (!controls) return;
 
         // MODE 1: TRACKING OBJECT
@@ -83,11 +103,9 @@ function CameraRig({ selectedPlanet, focusRef }) {
                 let offsetDistance, heightOffset;
 
                 if (selectedPlanet.id === 'sun') {
-                    // SUN SETTINGS
                     offsetDistance = 35; 
                     heightOffset = 5; 
                 } else {
-                    // PLANET SETTINGS
                     offsetDistance = selectedPlanet.radius * 12;
                     heightOffset = selectedPlanet.radius * 4;
                 }
@@ -204,6 +222,7 @@ function Planet({ data, simState, onClick, isSelected, focusRef, lang }) {
              <meshBasicMaterial transparent opacity={0} />
           </mesh>
 
+          {/* HTML is wrapped in Billboard, will hide automatically in VR usually, or just not render in XR layer */}
           <Html position={[0, data.radius + 1.5, 0]} center distanceFactor={15} style={{pointerEvents: 'none'}}>
              <div className={`flex flex-col items-center transition-all duration-300 ${isSelected ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}>
                 <div className="bg-black/50 backdrop-blur-md border border-white/20 px-3 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap">
@@ -220,11 +239,11 @@ function Planet({ data, simState, onClick, isSelected, focusRef, lang }) {
 // --- SCENE & UI ---
 function SceneContent() {
   const { camera, controls } = useThree();
-  const simRef = useRef({ totalDays: 0, targetDays: 0, isSimulating: false, finished: false, speed: 1 }); // ADDED SPEED
+  const simRef = useRef({ totalDays: 0, targetDays: 0, isSimulating: false, finished: false, speed: 1 });
   const focusRef = useRef(null);
   
   const [uiDays, setUiDays] = useState(0);
-  const [simSpeed, setSimSpeed] = useState(1); // UI State for speed
+  const [simSpeed, setSimSpeed] = useState(1);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [showReport, setShowReport] = useState(false);
   const [lang, setLang] = useState('en');
@@ -250,7 +269,6 @@ function SceneContent() {
   useFrame((state, delta) => {
     const sim = simRef.current;
     if (sim.isSimulating) {
-      // APPLY SPEED MULTIPLIER HERE
       const increment = (5 * sim.speed) * (delta * 60); 
       
       if (sim.targetDays > 0) {
@@ -286,28 +304,31 @@ function SceneContent() {
 
   return (
     <>
-        <Stars radius={300} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-        <ambientLight intensity={0.2} /> 
-        <pointLight position={[0, 0, 0]} intensity={2} color="#ffaa00" distance={0} decay={0} />
-        <directionalLight position={[50, 50, 50]} intensity={0.5} color="#ffffff" />
-        
         <OrbitControls makeDefault maxDistance={400} minDistance={2} enablePan={true} />
         
         <CameraRig selectedPlanet={selectedPlanet} focusRef={focusRef} />
 
-        <Sun onClick={handleFocus} isSelected={selectedPlanet?.id === 'sun'} focusRef={focusRef} />
-        
-        {PLANET_DATA.map((p) => (
-            <Planet 
-                key={p.id} 
-                data={p} 
-                simState={simRef} 
-                isSelected={selectedPlanet?.id === p.id} 
-                onClick={handleFocus}
-                focusRef={focusRef} 
-                lang={lang}
-            />
-        ))}
+        {/* --- 4. WRAP SCENE IN XR --- */}
+        <XR store={store}>
+            <Stars radius={300} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+            <ambientLight intensity={0.2} /> 
+            <pointLight position={[0, 0, 0]} intensity={2} color="#ffaa00" distance={0} decay={0} />
+            <directionalLight position={[50, 50, 50]} intensity={0.5} color="#ffffff" />
+
+            <Sun onClick={handleFocus} isSelected={selectedPlanet?.id === 'sun'} focusRef={focusRef} />
+            
+            {PLANET_DATA.map((p) => (
+                <Planet 
+                    key={p.id} 
+                    data={p} 
+                    simState={simRef} 
+                    isSelected={selectedPlanet?.id === p.id} 
+                    onClick={handleFocus}
+                    focusRef={focusRef} 
+                    lang={lang}
+                />
+            ))}
+        </XR>
 
         <Html fullscreen style={{ pointerEvents: 'none' }}>
             <div className="w-full h-full text-white font-sans select-none relative">
@@ -332,10 +353,16 @@ function SceneContent() {
                     </div>
                 </div>
 
-                {/* Top Header */}
+                {/* Top Header & VR BUTTON */}
                 <div className="absolute top-0 left-0 right-0 p-6 flex justify-end items-center pointer-events-auto">
                     <div className="flex gap-3">
                         <div className="px-5 py-2 bg-white/10 backdrop-blur rounded-full border border-white/10 flex items-center gap-2"><span className="text-xs text-gray-400">T+</span><span className="font-mono font-bold text-blue-400">{uiDays.toLocaleString()}</span><span className="text-xs text-gray-500">{t.days}</span></div>
+                        
+                        {/* --- 5. VR ENTRY BUTTON --- */}
+                        <button onClick={() => store.enterVR()} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center gap-2 transition font-bold shadow-lg shadow-blue-900/40">
+                            <Glasses className="w-4 h-4" /> {t.enter_vr}
+                        </button>
+
                         <button onClick={() => setLang(l => l === 'en' ? 'mn' : 'en')} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition">{t.lang}</button>
                         <button onClick={reset} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"><RotateCcw className="w-4 h-4" /></button>
                     </div>
